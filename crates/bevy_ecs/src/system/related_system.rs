@@ -20,7 +20,28 @@ pub enum RelatedQueryEntityError {
 
 impl std::error::Error for RelatedQueryEntityError {}
 
-// SystemParam for combine 2 related queries
+/// A Query like [system parameter] that provides selective access to the [`Component`] of  data stored in a [`World`],
+/// where source of relationship match filter.
+///
+/// `Related` is a generic data structure that accepts four type parameters:
+///
+///  - **`D` (query data)**:
+///   The type of data fetched by the query, which will be returned as the query item.
+///   Only entities that match the requested data will generate an item.
+///   Must implement the [`QueryData`] trait.
+/// - **`F1` (query filter)**:
+///   The set of conditions that determine whether query items should be kept or discarded from
+///   entities with source of relationship query.
+///   Must implement the [`QueryFilter`] trait.
+/// - **`R` (relationship target)
+///   The target of the relationship, in relation to which the filtering by `F2` will be performed.
+///   If the related entity contains as the target of the relationship an entity satisfying `F2`,
+///   then it will correspond to the query.
+///   Must implement the [`RelationshipTarget`] trait.
+/// - **`F2` (query filter)
+///   The set of conditions that determine whether query items should be kept or discarded
+///   for relationship target query.
+///   Must implement the [`QueryFilter`] trait.
 pub struct Related<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilter> {
     data_query: Query<'w, 's, D, (F1, With<R>)>,
     filter_query: Query<'w, 's, &'static R::Relationship, F2>,
