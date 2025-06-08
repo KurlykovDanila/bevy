@@ -10,7 +10,7 @@ use bevy_ecs::{
 };
 use derive_more::derive::Display;
 
-use crate::{error::BevyError, query::QueryEntityError};
+use crate::query::QueryEntityError;
 
 /// An error that occurs when retrieving a specific Entity’s query result from [`Related`].
 #[derive(Debug, Display, Copy, Clone, PartialEq, Eq)]
@@ -53,7 +53,7 @@ pub struct Related<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget,
 impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilter>
     Related<'w, 's, D, F1, R, F2>
 {
-    /// Read iterator
+    /// Returns an [`Iterator`] over the read-only items.
     pub fn iter(
         &'w self,
     ) -> QueryManyIter<
@@ -69,7 +69,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
         self.data_query
             .iter_many(self.filter_query.iter().map(|r| r.get()))
     }
-    /// Mutate iterator
+    /// Returns an [`Iterator`] over items for mutation.
     pub fn iter_mut(
         &'w mut self,
     ) -> QueryManyIter<
@@ -86,6 +86,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
             .iter_many_mut(self.filter_query.iter().map(|r| r.get()))
     }
 
+    /// Returns the read-only item for the given [`Entity`].
     pub fn get(
         &'w self,
         entity: Entity,
@@ -102,6 +103,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
         }
     }
 
+    /// Returns `true` if the given [`Entity`] matches the relative query.
     pub fn contains(&self, entity: Entity) -> bool {
         return self
             .filter_query
@@ -111,6 +113,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
             && self.data_query.contains(entity);
     }
 
+    /// Returns the mutating item for the given [`Entity`].
     pub fn get_mut(
         &'w mut self,
         entity: Entity,
