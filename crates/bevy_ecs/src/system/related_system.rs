@@ -10,12 +10,15 @@ use bevy_ecs::{
 };
 use derive_more::derive::Display;
 
-use crate::error::BevyError;
+use crate::{error::BevyError, query::QueryEntityError};
 
 #[derive(Debug, Display, Copy, Clone)]
-pub struct RelatedQueryError;
+pub enum RelatedQueryEntityError {
+    RelationshipEntityError(QueryEntityError),
+    RelationshipTargetEntityError(Entity),
+}
 
-impl std::error::Error for RelatedQueryError {}
+impl std::error::Error for RelatedQueryEntityError {}
 
 // SystemParam for combine 2 related queries
 pub struct Related<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilter> {
@@ -62,11 +65,16 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
     pub fn get(
         &'w self,
         entity: Entity,
-    ) -> Result<<<D as QueryData>::ReadOnly as QueryData>::Item<'w>, BevyError> {
+    ) -> Result<<<D as QueryData>::ReadOnly as QueryData>::Item<'w>, RelatedQueryEntityError> {
         if self.contains(entity) {
-            Ok(self.data_query.get(entity)?)
+            match self.data_query.get(entity) {
+                Ok(item) => return Ok(item),
+                Err(err) => return Err(RelatedQueryEntityError::RelationshipEntityError(err)),
+            }
         } else {
-            Err(RelatedQueryError.into())
+            return Err(RelatedQueryEntityError::RelationshipTargetEntityError(
+                entity,
+            ));
         }
     }
 
@@ -79,11 +87,19 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
             && self.data_query.contains(entity);
     }
 
-    pub fn get_mut(&'w mut self, entity: Entity) -> Result<<D as QueryData>::Item<'w>, BevyError> {
+    pub fn get_mut(
+        &'w mut self,
+        entity: Entity,
+    ) -> Result<<D as QueryData>::Item<'w>, RelatedQueryEntityError> {
         if self.contains(entity) {
-            Ok(self.data_query.get_mut(entity)?)
+            match self.data_query.get_mut(entity) {
+                Ok(item) => return Ok(item),
+                Err(err) => return Err(RelatedQueryEntityError::RelationshipEntityError(err)),
+            }
         } else {
-            Err(RelatedQueryError.into())
+            return Err(RelatedQueryEntityError::RelationshipTargetEntityError(
+                entity,
+            ));
         }
     }
 }
