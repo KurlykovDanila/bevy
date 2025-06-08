@@ -9,6 +9,8 @@ use bevy_ecs::{
     world::{unsafe_world_cell::UnsafeWorldCell, World},
 };
 
+use crate::error::BevyError;
+
 // SystemParam for combine 2 related queries
 pub struct Related<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilter> {
     data_query: Query<'w, 's, D, (F1, With<R>)>,
@@ -49,6 +51,22 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
     > {
         self.data_query
             .iter_many_mut(self.filter_query.iter().map(|r| r.get()))
+    }
+
+    pub fn get(
+        &'w self,
+        entity: Entity,
+    ) -> Result<<<D as QueryData>::ReadOnly as QueryData>::Item<'w>, BevyError> {
+        if self
+            .filter_query
+            .iter()
+            .map(|r| r.get())
+            .any(|e| e == entity)
+        {
+            return Ok(self.data_query.get(entity)?);
+        } else {
+            panic!("as");
+        }
     }
 }
 
