@@ -1,4 +1,4 @@
-use std::iter::Map;
+use core::iter::Map;
 
 use bevy_ecs::{
     component::Tick,
@@ -21,14 +21,17 @@ pub enum RelatedQueryEntityError {
     RelationshipTargetEntityError(Entity),
 }
 
-impl std::error::Error for RelatedQueryEntityError {}
+impl core::error::Error for RelatedQueryEntityError {}
 
 /// A Query like [system parameter] that provides selective access to the [`Component`] of  data stored in a [`World`],
 /// where source of relationship match filter.
 ///
+/// [system parameter]: crate::system::SystemParam
+/// [`Component`]: crate::component::Component
+///
 /// `Related` is a generic data structure that accepts four type parameters:
 ///
-///  - **`D` (query data)**:
+/// - **`D` (query data)**:
 ///   The type of data fetched by the query, which will be returned as the query item.
 ///   Only entities that match the requested data will generate an item.
 ///   Must implement the [`QueryData`] trait.
@@ -67,7 +70,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
         >,
     > {
         self.data_query
-            .iter_many(self.filter_query.iter().map(|r| r.get()))
+            .iter_many(self.filter_query.iter().map(Relationship::get))
     }
     /// Returns an [`Iterator`] over items for mutation.
     pub fn iter_mut(
@@ -83,7 +86,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
         >,
     > {
         self.data_query
-            .iter_many_mut(self.filter_query.iter().map(|r| r.get()))
+            .iter_many_mut(self.filter_query.iter().map(Relationship::get))
     }
 
     /// Returns the read-only item for the given [`Entity`].
@@ -93,13 +96,13 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
     ) -> Result<<<D as QueryData>::ReadOnly as QueryData>::Item<'w>, RelatedQueryEntityError> {
         if self.contains(entity) {
             match self.data_query.get(entity) {
-                Ok(item) => return Ok(item),
-                Err(err) => return Err(RelatedQueryEntityError::RelationshipEntityError(err)),
+                Ok(item) => Ok(item),
+                Err(err) => Err(RelatedQueryEntityError::RelationshipEntityError(err)),
             }
         } else {
-            return Err(RelatedQueryEntityError::RelationshipTargetEntityError(
+            Err(RelatedQueryEntityError::RelationshipTargetEntityError(
                 entity,
-            ));
+            ))
         }
     }
 
@@ -108,7 +111,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
         return self
             .filter_query
             .iter()
-            .map(|r| r.get())
+            .map(Relationship::get)
             .any(|e| e == entity)
             && self.data_query.contains(entity);
     }
@@ -120,18 +123,19 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
     ) -> Result<<D as QueryData>::Item<'w>, RelatedQueryEntityError> {
         if self.contains(entity) {
             match self.data_query.get_mut(entity) {
-                Ok(item) => return Ok(item),
-                Err(err) => return Err(RelatedQueryEntityError::RelationshipEntityError(err)),
+                Ok(item) => Ok(item),
+                Err(err) => Err(RelatedQueryEntityError::RelationshipEntityError(err)),
             }
         } else {
-            return Err(RelatedQueryEntityError::RelationshipTargetEntityError(
+            Err(RelatedQueryEntityError::RelationshipTargetEntityError(
                 entity,
-            ));
+            ))
         }
     }
 }
 
 /// Just make 2 independent queries and then combine them.
+/// SAFETY: delegates safety to [`Query`] for `ComponentId` and `ArchetypeComponentId` access.
 unsafe impl<'w, 's, R, D, F1, F2> SystemParam for Related<'w, 's, D, F1, R, F2>
 where
     R: RelationshipTarget,
@@ -163,6 +167,10 @@ where
         // world data that the query needs.
         // The caller ensures the world matches the one used in init_state.
         let data_query = unsafe { state.0.query_unchecked_manual(world) };
+        // SAFETY: We have registered all of the query's world accesses,
+        // so the caller ensures that `world` has permission to access any
+        // world data that the query needs.
+        // The caller ensures the world matches the one used in init_state.
         let filter_query = unsafe { state.1.query_unchecked_manual(world) };
         Related {
             data_query,
@@ -247,7 +255,7 @@ mod tests {
 
     fn with_head(q: Query<Entity, With<Children>>, q2: Query<&ChildOf, With<Head>>) -> usize {
         q.iter().fold(0, |acc, e| {
-            if q2.iter().map(|c| c.parent()).find(|c| *c == e).is_some() {
+            if q2.iter().map(ChildOf::parent).any(|c| c == e) {
                 acc + 1
             } else {
                 acc
@@ -260,7 +268,7 @@ mod tests {
         q2: Query<&ChildOf, (With<Head>, With<Fangs>)>,
     ) -> usize {
         q.iter().fold(0, |acc, e| {
-            if q2.iter().map(|c| c.parent()).find(|c| *c == e).is_some() {
+            if q2.iter().map(ChildOf::parent).any(|c| c == e) {
                 acc + 1
             } else {
                 acc
@@ -279,7 +287,7 @@ mod tests {
         q2: Query<&ChildOf, (With<Head>, Without<Fangs>)>,
     ) -> usize {
         q.iter().fold(0, |acc, e| {
-            if q2.iter().map(|c| c.parent()).find(|c| *c == e).is_some() {
+            if q2.iter().map(ChildOf::parent).any(|c| c == e) {
                 acc + 1
             } else {
                 acc
