@@ -10,55 +10,63 @@ use bevy_ecs::{
 };
 
 // SystemParam for combine 2 related queries
-pub struct Related<'w, 's, D: QueryData, R: RelationshipTarget, F: QueryFilter> {
-    data_query: Query<'w, 's, D, With<R>>,
-    filter_query: QueryIter<'w, 's, &'static R::Relationship, F>,
+pub struct Related<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilter> {
+    data_query: Query<'w, 's, D, (F1, With<R>)>,
+    filter_query: Query<'w, 's, &'static R::Relationship, F2>,
 }
 
-impl<'w, 's, D: QueryData, R: RelationshipTarget, F: QueryFilter> Related<'w, 's, D, R, F> {
+impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilter>
+    Related<'w, 's, D, F1, R, F2>
+{
     /// Read iterator
     pub fn iter(
-        &self,
+        &'w self,
     ) -> QueryManyIter<
-        '_,
-        '_,
+        'w,
+        's,
         <D as QueryData>::ReadOnly,
-        With<R>,
+        (F1, With<R>),
         Map<
-            QueryIter<'w, 's, &'static R::Relationship, F>,
+            QueryIter<'w, 's, &'static R::Relationship, F2>,
             impl FnMut(&'w R::Relationship) -> Entity,
         >,
     > {
         self.data_query
-            .iter_many(self.filter_query.clone().map(|r| r.get()))
+            .iter_many(self.filter_query.iter().map(|r| r.get()))
     }
     /// Mutate iterator
     pub fn iter_mut(
-        &mut self,
+        &'w mut self,
     ) -> QueryManyIter<
-        '_,
-        '_,
+        'w,
+        's,
         D,
-        With<R>,
+        (F1, With<R>),
         Map<
-            QueryIter<'w, 's, &'static R::Relationship, F>,
+            QueryIter<'w, 's, &'static R::Relationship, F2>,
             impl FnMut(&'w R::Relationship) -> Entity,
         >,
     > {
         self.data_query
-            .iter_many_mut(self.filter_query.clone().map(|r| r.get()))
+            .iter_many_mut(self.filter_query.iter().map(|r| r.get()))
     }
 }
 
 /// Just make 2 independent queries and then combine them.
-unsafe impl<'w, 's, R: RelationshipTarget + 'static, D: QueryData + 'static, F: QueryFilter + 'static>
-    SystemParam for Related<'w, 's, D, R, F>
+unsafe impl<
+        'w,
+        's,
+        R: RelationshipTarget + 'static,
+        D: QueryData + 'static,
+        F1: QueryFilter + 'static,
+        F2: QueryFilter + 'static,
+    > SystemParam for Related<'w, 's, D, F1, R, F2>
 {
     type State = (
-        QueryState<D, With<R>>,
-        QueryState<&'static R::Relationship, F>,
+        QueryState<D, (F1, With<R>)>,
+        QueryState<&'static R::Relationship, F2>,
     );
-    type Item<'world, 'state> = Related<'world, 'state, D, R, F>;
+    type Item<'world, 'state> = Related<'world, 'state, D, F1, R, F2>;
 
     fn init_state(world: &mut World, system_meta: &mut SystemMeta) -> Self::State {
         let data_query = Query::init_state(world, system_meta);
@@ -73,7 +81,7 @@ unsafe impl<'w, 's, R: RelationshipTarget + 'static, D: QueryData + 'static, F: 
         _: Tick,
     ) -> Self::Item<'world, 'state> {
         let data_query = unsafe { state.0.query_unchecked_manual(world) };
-        let filter_query = unsafe { state.1.query_unchecked_manual(world).into_iter() };
+        let filter_query = unsafe { state.1.query_unchecked_manual(world) };
         Related {
             data_query,
             filter_query,
@@ -141,7 +149,7 @@ mod tests {
         );
     }
 
-    fn my_with_head(q: Related<Entity, Children, With<Head>>) -> usize {
+    fn my_with_head(q: Related<Entity, (), Children, With<Head>>) -> usize {
         q.iter().count()
     }
 
@@ -168,7 +176,9 @@ mod tests {
         })
     }
 
-    fn my_with_head_and_fangs(q: Related<Entity, Children, (With<Head>, With<Fangs>)>) -> usize {
+    fn my_with_head_and_fangs(
+        q: Related<Entity, (), Children, (With<Head>, With<Fangs>)>,
+    ) -> usize {
         q.iter().count()
     }
 
@@ -186,7 +196,7 @@ mod tests {
     }
 
     fn my_with_head_and_without_fangs(
-        q: Related<Entity, Children, (With<Head>, Without<Fangs>)>,
+        q: Related<Entity, (), Children, (With<Head>, Without<Fangs>)>,
     ) -> usize {
         q.iter().count()
     }
