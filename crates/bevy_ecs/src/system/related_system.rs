@@ -63,13 +63,25 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
         &'w self,
         entity: Entity,
     ) -> Result<<<D as QueryData>::ReadOnly as QueryData>::Item<'w>, BevyError> {
-        if self
+        if self.contains(entity) {
+            Ok(self.data_query.get(entity)?)
+        } else {
+            Err(RelatedQueryError.into())
+        }
+    }
+
+    pub fn contains(&self, entity: Entity) -> bool {
+        return self
             .filter_query
             .iter()
             .map(|r| r.get())
             .any(|e| e == entity)
-        {
-            return Ok(self.data_query.get(entity)?);
+            && self.data_query.contains(entity);
+    }
+
+    pub fn get_mut(&'w mut self, entity: Entity) -> Result<<D as QueryData>::Item<'w>, BevyError> {
+        if self.contains(entity) {
+            Ok(self.data_query.get_mut(entity)?)
         } else {
             Err(RelatedQueryError.into())
         }
