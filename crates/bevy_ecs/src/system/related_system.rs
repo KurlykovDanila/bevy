@@ -69,6 +69,7 @@ unsafe impl<
     type Item<'world, 'state> = Related<'world, 'state, D, F1, R, F2>;
 
     fn init_state(world: &mut World, system_meta: &mut SystemMeta) -> Self::State {
+        // Register all of query's world accesses
         let data_query = Query::init_state(world, system_meta);
         let filter_query = Query::init_state(world, system_meta);
         (data_query, filter_query)
@@ -80,6 +81,10 @@ unsafe impl<
         world: UnsafeWorldCell<'world>,
         _: Tick,
     ) -> Self::Item<'world, 'state> {
+        // SAFETY: We have registered all of the query's world accesses,
+        // so the caller ensures that `world` has permission to access any
+        // world data that the query needs.
+        // The caller ensures the world matches the one used in init_state.
         let data_query = unsafe { state.0.query_unchecked_manual(world) };
         let filter_query = unsafe { state.1.query_unchecked_manual(world) };
         Related {
