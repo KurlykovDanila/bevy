@@ -8,8 +8,14 @@ use bevy_ecs::{
     system::{Query, SystemMeta, SystemParam},
     world::{unsafe_world_cell::UnsafeWorldCell, World},
 };
+use derive_more::derive::Display;
 
 use crate::error::BevyError;
+
+#[derive(Debug, Display, Copy, Clone)]
+pub struct RelatedQueryError;
+
+impl std::error::Error for RelatedQueryError {}
 
 // SystemParam for combine 2 related queries
 pub struct Related<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilter> {
@@ -65,7 +71,7 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
         {
             return Ok(self.data_query.get(entity)?);
         } else {
-            panic!("as");
+            Err(RelatedQueryError.into())
         }
     }
 }
