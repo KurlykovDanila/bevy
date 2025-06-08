@@ -53,14 +53,12 @@ impl<'w, 's, D: QueryData, F1: QueryFilter, R: RelationshipTarget, F2: QueryFilt
 }
 
 /// Just make 2 independent queries and then combine them.
-unsafe impl<
-        'w,
-        's,
-        R: RelationshipTarget + 'static,
-        D: QueryData + 'static,
-        F1: QueryFilter + 'static,
-        F2: QueryFilter + 'static,
-    > SystemParam for Related<'w, 's, D, F1, R, F2>
+unsafe impl<'w, 's, R, D, F1, F2> SystemParam for Related<'w, 's, D, F1, R, F2>
+where
+    R: RelationshipTarget,
+    D: QueryData + 'static,
+    F1: QueryFilter + 'static,
+    F2: QueryFilter + 'static,
 {
     type State = (
         QueryState<D, (F1, With<R>)>,
