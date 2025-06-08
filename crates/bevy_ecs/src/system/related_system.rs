@@ -12,9 +12,12 @@ use derive_more::derive::Display;
 
 use crate::{error::BevyError, query::QueryEntityError};
 
-#[derive(Debug, Display, Copy, Clone)]
+/// An error that occurs when retrieving a specific Entity’s query result from [`Related`].
+#[derive(Debug, Display, Copy, Clone, PartialEq, Eq)]
 pub enum RelatedQueryEntityError {
+    /// Error retrieving data by source relationship entity.
     RelationshipEntityError(QueryEntityError),
+    /// [`Entity`] does not have a relationship target that satisfies `F2`.
     RelationshipTargetEntityError(Entity),
 }
 
