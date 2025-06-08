@@ -208,15 +208,25 @@ mod tests {
         let test_whafs = world.register_system(my_with_head_and_fangs);
         let test_whawf = world.register_system(my_with_head_and_without_fangs);
 
-        let orc_id = world.spawn((Orc, children![(Head, Fangs)])).id();
-        let human_id = world.spawn((Human, children![Head])).id();
-        let wolf_id = world.spawn((Wolf, children![(Head, Fangs)])).id();
+        let _orc_id = world.spawn((Orc, children![(Head, Fangs)])).id();
+        let _human_id = world.spawn((Human, children![Head])).id();
+        let _wolf_id = world.spawn((Wolf, children![(Head, Fangs)])).id();
 
-        let _ = world.run_system(with_head_sys);
-        let _ = world.run_system(with_head_and_fangs_sys);
-        let _ = world.run_system(with_head_and_without_fangs_sys);
+        assert_eq!(
+            world.run_system(with_head_sys).unwrap(),
+            world.run_system(test_whs).unwrap()
+        );
+        assert_eq!(
+            world.run_system(with_head_and_fangs_sys).unwrap(),
+            world.run_system(test_whafs).unwrap()
+        );
+        assert_eq!(
+            world.run_system(with_head_and_without_fangs_sys).unwrap(),
+            world.run_system(test_whawf).unwrap()
+        );
 
-        let wolf2_id = world.spawn((Wolf, children![(Head, Fangs)])).id();
+        let _wolf2_id = world.spawn((Wolf, children![(Head, Fangs)])).id();
+
         assert_eq!(
             world.run_system(with_head_sys).unwrap(),
             world.run_system(test_whs).unwrap()
